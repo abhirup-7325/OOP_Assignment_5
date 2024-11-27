@@ -7,7 +7,6 @@ subjects and ii) for a subjects who are the students.
 Design the classes and implement. For list consider memory data structure.
 */
 
-
 #include <iostream>
 #include <vector>
 #include <map>
@@ -125,48 +124,104 @@ public:
     const std::map<int, Subject*>& getSubjects() const { return subjects; }
 };
 
+class System {
+public:
+    static void run() {
+        StudentList studentList;
+        SubjectList subjectList;
+
+        while (true) {
+            std::cout << "\nMenu:\n";
+            std::cout << "1. Add Student\n";
+            std::cout << "2. Add Subject\n";
+            std::cout << "3. Enroll Student in Subject\n";
+            std::cout << "4. List Students and their Subjects\n";
+            std::cout << "5. List Subjects and their Students\n";
+            std::cout << "6. Exit\n";
+            std::cout << "Enter your choice: ";
+
+            int choice;
+            std::cin >> choice;
+
+            switch (choice) {
+                case 1: {
+                    int roll;
+                    std::string name;
+                    std::cout << "Enter student roll number: ";
+                    std::cin >> roll;
+                    std::cin.ignore();  // Ignore newline character from previous input
+                    std::cout << "Enter student name: ";
+                    std::getline(std::cin, name);
+                    studentList.addStudent(roll, name);
+                    break;
+                }
+                case 2: {
+                    int code;
+                    std::string name;
+                    std::cout << "Enter subject code: ";
+                    std::cin >> code;
+                    std::cin.ignore();  // Ignore newline character from previous input
+                    std::cout << "Enter subject name: ";
+                    std::getline(std::cin, name);
+                    subjectList.addSubject(code, name);
+                    break;
+                }
+                case 3: {
+                    int roll, code;
+                    std::cout << "Enter student roll number: ";
+                    std::cin >> roll;
+                    std::cout << "Enter subject code: ";
+                    std::cin >> code;
+
+                    Student* student = studentList.findStudentByRoll(roll);
+                    Subject* subject = subjectList.findSubjectByCode(code);
+
+                    if (student && subject) {
+                        student->enrollSubject(subject);
+                        std::cout << "Enrolled successfully.\n";
+                    } else {
+                        std::cout << "Error: Invalid student or subject.\n";
+                    }
+                    break;
+                }
+                case 4: {
+                    const std::map<int, Student*>& students = studentList.getStudents();
+                    std::cout << "\nStudent -> Subjects:\n";
+                    for (std::map<int, Student*>::const_iterator it = students.begin(); it != students.end(); ++it) {
+                        Student* student = it->second;
+                        std::cout << "Student: " << student->getName() << " (Roll: " << student->getRoll() << ")\nSubjects:\n";
+                        const std::vector<Subject*>& subjects = student->getEnrolledSubjects();
+                        for (std::vector<Subject*>::const_iterator sit = subjects.begin(); sit != subjects.end(); ++sit) {
+                            std::cout << "  - " << (*sit)->getName() << "\n";
+                        }
+                    }
+                    break;
+                }
+                case 5: {
+                    const std::map<int, Subject*>& subjects = subjectList.getSubjects();
+                    std::cout << "\nSubject -> Students:\n";
+                    for (std::map<int, Subject*>::const_iterator it = subjects.begin(); it != subjects.end(); ++it) {
+                        Subject* subject = it->second;
+                        std::cout << "Subject: " << subject->getName() << " (Code: " << subject->getCode() << ")\nStudents:\n";
+                        const std::vector<Student*>& students = subject->getEnrolledStudents();
+                        for (std::vector<Student*>::const_iterator sit = students.begin(); sit != students.end(); ++sit) {
+                            std::cout << "  - " << (*sit)->getName() << "\n";
+                        }
+                    }
+                    break;
+                }
+                case 6: {
+                    std::cout << "Exiting program.\n";
+                    return;
+                }
+                default:
+                    std::cout << "Invalid choice. Please try again.\n";
+            }
+        }
+    }
+};
+
 int main() {
-    StudentList studentList;
-    SubjectList subjectList;
-
-    studentList.addStudent(1, "Alice");
-    studentList.addStudent(2, "Bob");
-    studentList.addStudent(1, "DuplicateAlice");  // Duplicate roll check
-
-    subjectList.addSubject(101, "Mathematics");
-    subjectList.addSubject(102, "Physics");
-    subjectList.addSubject(101, "DuplicateMath");  // Duplicate subject code check
-
-    Student* alice = studentList.findStudentByRoll(1);
-    Student* bob = studentList.findStudentByRoll(2);
-    Subject* math = subjectList.findSubjectByCode(101);
-    Subject* physics = subjectList.findSubjectByCode(102);
-
-    if (alice && math) alice->enrollSubject(math);
-    if (bob && physics) bob->enrollSubject(physics);
-    if (bob && math) bob->enrollSubject(math);
-
-    std::cout << "\nStudent -> Subjects:\n";
-    const std::map<int, Student*>& students = studentList.getStudents();
-    for (std::map<int, Student*>::const_iterator it = students.begin(); it != students.end(); ++it) {
-        Student* student = it->second;
-        std::cout << "Student: " << student->getName() << " (Roll: " << student->getRoll() << ")\nSubjects:\n";
-        const std::vector<Subject*>& subjects = student->getEnrolledSubjects();
-        for (std::vector<Subject*>::const_iterator sit = subjects.begin(); sit != subjects.end(); ++sit) {
-            std::cout << "  - " << (*sit)->getName() << "\n";
-        }
-    }
-
-    std::cout << "\nSubject -> Students:\n";
-    const std::map<int, Subject*>& subjects = subjectList.getSubjects();
-    for (std::map<int, Subject*>::const_iterator it = subjects.begin(); it != subjects.end(); ++it) {
-        Subject* subject = it->second;
-        std::cout << "Subject: " << subject->getName() << " (Code: " << subject->getCode() << ")\nStudents:\n";
-        const std::vector<Student*>& students = subject->getEnrolledStudents();
-        for (std::vector<Student*>::const_iterator sit = students.begin(); sit != students.end(); ++sit) {
-            std::cout << "  - " << (*sit)->getName() << "\n";
-        }
-    }
-
+    System::run();
     return 0;
 }
