@@ -14,13 +14,54 @@ member-id, book-id, serial number, returned or not. An entry is made when book
 is issued and updated when the book is returned.
 Design the classes and implement. For list consider memory data structure.
 */
-
-
 #include <iostream>
 #include <vector>
 #include <map>
 #include <string>
 #include <ctime>
+
+class Member {
+protected:
+    std::string memberId;
+    std::string name;
+    std::string email;
+    std::string address;
+    int booksIssued;
+
+public:
+    Member(const std::string& memberId, const std::string& name, const std::string& email, const std::string& address)
+        : memberId(memberId), name(name), email(email), address(address), booksIssued(0) {}
+
+    virtual int getMaxBooks() const = 0;
+    std::string getMemberId() const { return memberId; }
+
+    bool canIssueMoreBooks() const { return booksIssued < getMaxBooks(); }
+
+    void issueBook() { ++booksIssued; }
+    void returnBook() { --booksIssued; }
+
+    virtual ~Member() {}
+};
+
+class Student : public Member {
+public:
+    Student(const std::string& memberId, const std::string& name, const std::string& email, const std::string& address)
+        : Member(memberId, name, email, address) {}
+
+    int getMaxBooks() const override {
+        return 2;
+    }
+};
+
+class Faculty : public Member {
+public:
+    Faculty(const std::string& memberId, const std::string& name, const std::string& email, const std::string& address)
+        : Member(memberId, name, email, address) {}
+
+    int getMaxBooks() const override {
+        return 10;
+    }
+};
 
 class Book {
 private:
@@ -38,28 +79,10 @@ public:
 
     std::string getBookId() const { return bookId; }
     int getSerialNumber() const { return serialNumber; }
+
     bool checkAvailability() const { return !isIssued; }
     void markIssued() { isIssued = true; }
     void markReturned() { isIssued = false; }
-};
-
-class Member {
-private:
-    std::string memberId;
-    std::string name;
-    std::string email;
-    std::string address;
-    int maxBooks;
-    int booksIssued;
-
-public:
-    Member(const std::string& memberId, const std::string& name, const std::string& email, const std::string& address, int maxBooks)
-        : memberId(memberId), name(name), email(email), address(address), maxBooks(maxBooks), booksIssued(0) {}
-
-    std::string getMemberId() const { return memberId; }
-    bool canIssueMoreBooks() const { return booksIssued < maxBooks; }
-    void issueBook() { ++booksIssued; }
-    void returnBook() { --booksIssued; }
 };
 
 class Transaction {
@@ -82,22 +105,22 @@ public:
 
 class Library {
 private:
-    std::map<std::string, std::map<int, Book*>> books;
+    std::map<std::string, std::map<int, Book*>> books; 
     std::map<std::string, Member*> members;
     std::vector<Transaction*> transactions;
 
 public:
     ~Library() {
-        for (std::map<std::string, std::map<int, Book*>>::iterator it = books.begin(); it != books.end(); ++it) {
-            for (std::map<int, Book*>::iterator jt = it->second.begin(); jt != it->second.end(); ++jt) {
-                delete jt->second;
+        for (auto& bookMap : books) {
+            for (auto& book : bookMap.second) {
+                delete book.second;
             }
         }
-        for (std::map<std::string, Member*>::iterator it = members.begin(); it != members.end(); ++it) {
-            delete it->second;
+        for (auto& member : members) {
+            delete member.second;
         }
-        for (std::vector<Transaction*>::iterator it = transactions.begin(); it != transactions.end(); ++it) {
-            delete *it;
+        for (auto& transaction : transactions) {
+            delete transaction;
         }
     }
 
@@ -114,8 +137,13 @@ public:
             std::cout << "Error: Member with this ID already exists.\n";
             return;
         }
-        int maxBooks = isFaculty ? 10 : 2;
-        members[memberId] = new Member(memberId, name, email, address, maxBooks);
+        Member* member = nullptr;
+        if (isFaculty) {
+            member = new Faculty(memberId, name, email, address);
+        } else {
+            member = new Student(memberId, name, email, address);
+        }
+        members[memberId] = member;
     }
 
     void issueBook(const std::string& memberId, const std::string& bookId) {
@@ -132,11 +160,12 @@ public:
             std::cout << "Error: Member has reached the maximum limit of issued books.\n";
             return;
         }
-        for (std::map<int, Book*>::iterator it = books[bookId].begin(); it != books[bookId].end(); ++it) {
-            if (it->second->checkAvailability()) {
-                it->second->markIssued();
+        for (auto& bookPair : books[bookId]) {
+            Book* book = bookPair.second;
+            if (book->checkAvailability()) {
+                book->markIssued();
                 member->issueBook();
-                transactions.push_back(new Transaction(memberId, bookId, it->first));
+                transactions.push_back(new Transaction(memberId, bookId, book->getSerialNumber()));
                 std::cout << "Book issued successfully.\n";
                 return;
             }
@@ -153,9 +182,9 @@ public:
             std::cout << "Error: Book ID or serial number not found.\n";
             return;
         }
-        for (std::vector<Transaction*>::iterator it = transactions.begin(); it != transactions.end(); ++it) {
-            if ((*it)->checkTransaction(memberId, bookId, serialNumber)) {
-                (*it)->markReturned();
+        for (auto& transaction : transactions) {
+            if (transaction->checkTransaction(memberId, bookId, serialNumber)) {
+                transaction->markReturned();
                 books[bookId][serialNumber]->markReturned();
                 members[memberId]->returnBook();
                 std::cout << "Book returned successfully.\n";
@@ -166,16 +195,99 @@ public:
     }
 };
 
+class System {
+public:
+    static void run() {
+        Library library;
+
+        while (true) {
+            std::cout << "\nMenu:\n";
+            std::cout << "1. Add Book\n";
+            std::cout << "2. Add Member\n";
+            std::cout << "3. Issue Book\n";
+            std::cout << "4. Return Book\n";
+            std::cout << "5. Exit\n";
+            std::cout << "Enter your choice: ";
+
+            int choice;
+            std::cin >> choice;
+
+            switch (choice) {
+                case 1: {
+                    std::string bookId, title, author, publisher;
+                    int serialNumber;
+                    double price;
+                    std::cout << "Enter Book ID: ";
+                    std::cin >> bookId;
+                    std::cout << "Enter Serial Number: ";
+                    std::cin >> serialNumber;
+                    std::cout << "Enter Title: ";
+                    std::cin.ignore();
+                    std::getline(std::cin, title);
+                    std::cout << "Enter Author: ";
+                    std::getline(std::cin, author);
+                    std::cout << "Enter Publisher: ";
+                    std::getline(std::cin, publisher);
+                    std::cout << "Enter Price: ";
+                    std::cin >> price;
+
+                    library.addBook(bookId, serialNumber, title, author, publisher, price);
+                    break;
+                }
+                case 2: {
+                    std::string memberId, name, email, address;
+                    bool isFaculty;
+                    std::cout << "Enter Member ID: ";
+                    std::cin >> memberId;
+                    std::cout << "Enter Name: ";
+                    std::cin.ignore();
+                    std::getline(std::cin, name);
+                    std::cout << "Enter Email: ";
+                    std::getline(std::cin, email);
+                    std::cout << "Enter Address: ";
+                    std::getline(std::cin, address);
+                    std::cout << "Is Faculty (1/0): ";
+                    std::cin >> isFaculty;
+
+                    library.addMember(memberId, name, email, address, isFaculty);
+                    break;
+                }
+                case 3: {
+                    std::string memberId, bookId;
+                    std::cout << "Enter Member ID: ";
+                    std::cin >> memberId;
+                    std::cout << "Enter Book ID: ";
+                    std::cin >> bookId;
+
+                    library.issueBook(memberId, bookId);
+                    break;
+                }
+                case 4: {
+                    std::string memberId, bookId;
+                    int serialNumber;
+
+                    std::cout << "Enter Member ID: ";
+                    std::cin >> memberId;
+                    std::cout << "Enter Book ID: ";
+                    std::cin >> bookId;
+                    std::cout << "Enter Serial Number: ";
+                    std::cin >> serialNumber;
+
+                    library.returnBook(memberId, bookId, serialNumber);
+                    break;
+                }
+                case 5: {
+                    std::cout << "Exiting system.\n";
+                    return;
+                }
+                default:
+                    std::cout << "Invalid choice. Please try again.\n";
+            }
+        }
+    }
+};
+
 int main() {
-    Library library;
-
-    library.addBook("B101", 1, "The Great Gatsby", "F. Scott Fitzgerald", "Scribner", 10.99);
-    library.addBook("B101", 2, "The Great Gatsby", "F. Scott Fitzgerald", "Scribner", 10.99);
-    library.addMember("M001", "Alice", "alice@example.com", "123 Street", false);
-    library.addMember("M002", "Dr. Bob", "bob@example.com", "456 Avenue", true);
-
-    library.issueBook("M001", "B101");
-    library.returnBook("M001", "B101", 1);
-
+    System::run();
     return 0;
 }

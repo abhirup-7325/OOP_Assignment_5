@@ -204,8 +204,8 @@ public:
                         Subject* subject = it->second;
                         std::cout << "Subject: " << subject->getName() << " (Code: " << subject->getCode() << ")\nStudents:\n";
                         const std::vector<Student*>& students = subject->getEnrolledStudents();
-                        for (std::vector<Student*>::const_iterator sit = students.begin(); sit != students.end(); ++sit) {
-                            std::cout << "  - " << (*sit)->getName() << "\n";
+                        for (std::vector<Student*>::const_iterator it = students.begin(); it != students.end(); ++it) {
+                            std::cout << "  - " << (*it)->getName() << "\n";
                         }
                     }
                     break;
